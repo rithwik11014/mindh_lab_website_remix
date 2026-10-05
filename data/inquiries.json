@@ -1,0 +1,13 @@
+[
+  {
+    "id": "inq-1791029329819",
+    "name": "Test Doctor",
+    "email": "doctor@hospital.org",
+    "affiliation": "Metropolitan Hospital",
+    "role": "Clinician",
+    "interestType": "Clinical Trial",
+    "message": "Interested in validating the contactless rPPG monitor.",
+    "createdAt": "2026-10-03T12:08:49.819Z",
+    "status": "New"
+  }
+]
