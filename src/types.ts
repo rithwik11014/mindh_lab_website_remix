@@ -48,7 +48,21 @@ export interface LabNewsItem {
   orderIndex?: number;
 }
 
-export type TeamCategory = 'Faculty' | 'Researchers' | 'PhD Scholars' | 'Students' | 'Alumni' | 'Collaborators';
+export type TeamCategory =
+  | 'Professor'
+  | 'Post Doc'
+  | 'PhD'
+  | 'M.tech'
+  | 'Interns'
+  | 'Project Staff'
+  | 'Faculty'
+  | 'Researchers'
+  | 'PhD Scholars'
+  | 'Students'
+  | 'Alumni'
+  | 'Collaborators';
+
+export type SubCategoryOption = 'All' | 'Regular' | 'External';
 
 export type CollaboratorCategory =
   | 'Clinical & Hospital'
@@ -103,6 +117,7 @@ export interface TeamMember {
   name: string;
   role: string;
   category: TeamCategory;
+  subType?: 'Regular' | 'External' | string;
   credentials: string;
   bio: string;
   detailedBio?: string;

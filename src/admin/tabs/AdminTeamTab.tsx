@@ -30,8 +30,9 @@ export const AdminTeamTab: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    role: 'Principal Investigator',
-    category: 'Faculty' as TeamCategory,
+    role: 'Professor & Principal Investigator',
+    category: 'Professor' as TeamCategory,
+    subType: 'Regular' as 'Regular' | 'External',
     credentials: 'PhD',
     bio: '',
     detailedBio: '',
@@ -85,7 +86,8 @@ export const AdminTeamTab: React.FC = () => {
     setFormData({
       name: '',
       role: 'Postdoctoral Fellow',
-      category: 'Researchers',
+      category: 'Post Doc',
+      subType: 'Regular',
       credentials: 'PhD, Biomedical Engineering',
       bio: 'Conducting advanced research in clinical bio-signal processing and telemetry.',
       detailedBio: '',
@@ -108,6 +110,7 @@ export const AdminTeamTab: React.FC = () => {
       name: m.name,
       role: m.role,
       category: m.category,
+      subType: (m.subType === 'External' ? 'External' : 'Regular') as 'Regular' | 'External',
       credentials: m.credentials || '',
       bio: m.bio || '',
       detailedBio: m.detailedBio || '',
@@ -133,6 +136,7 @@ export const AdminTeamTab: React.FC = () => {
         name: formData.name,
         role: formData.role,
         category: formData.category,
+        subType: formData.subType,
         credentials: formData.credentials,
         bio: formData.bio,
         detailedBio: formData.detailedBio,
@@ -188,12 +192,13 @@ export const AdminTeamTab: React.FC = () => {
   };
 
   const categories: TeamCategory[] = [
-    'Faculty',
-    'Researchers',
-    'PhD Scholars',
-    'Students',
+    'Professor',
+    'Post Doc',
+    'PhD',
+    'M.tech',
+    'Interns',
+    'Project Staff',
     'Alumni',
-    'Collaborators',
   ];
 
   const filtered = team.filter((m) => {
@@ -411,6 +416,38 @@ export const AdminTeamTab: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {(formData.category === 'PhD' || formData.category === 'M.tech') && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    {formData.category === 'PhD' ? 'PhD Track Sub-Option' : 'M.Tech Track Sub-Option'}
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subType"
+                        value="Regular"
+                        checked={formData.subType !== 'External'}
+                        onChange={() => setFormData({ ...formData, subType: 'Regular' })}
+                        className="text-maroon-600 focus:ring-maroon-600"
+                      />
+                      <span>Regular ({formData.category === 'PhD' ? 'Regular PhD' : 'Regular M.Tech'})</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-purple-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subType"
+                        value="External"
+                        checked={formData.subType === 'External'}
+                        onChange={() => setFormData({ ...formData, subType: 'External' })}
+                        className="text-purple-600 focus:ring-purple-600"
+                      />
+                      <span>External ({formData.category === 'PhD' ? 'External PhD' : 'External M.Tech'})</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <ImageUploadInput

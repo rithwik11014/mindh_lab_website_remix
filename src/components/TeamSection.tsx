@@ -8,20 +8,20 @@ import {
   ArrowRight,
   GraduationCap,
   Sparkles,
+  Filter,
 } from 'lucide-react';
-import { TeamMember, TeamCategory } from '../types';
+import { TeamMember } from '../types';
 import { LAB_TEAM } from '../data/labData';
 import { TeamMemberDetailModal } from './TeamMemberDetailModal';
-
-const ALL_CATEGORIES: Array<{ key: 'ALL' | TeamCategory; label: string }> = [
-  { key: 'ALL', label: 'All Personnel' },
-  { key: 'Faculty', label: 'Faculty & PIs' },
-  { key: 'Researchers', label: 'Research Scientists & Postdocs' },
-  { key: 'PhD Scholars', label: 'PhD Scholars' },
-  { key: 'Students', label: 'Graduate Students' },
-  { key: 'Alumni', label: 'Alumni' },
-  { key: 'Collaborators', label: 'Clinical Collaborators' },
-];
+import {
+  TEAM_PRIORITY_CATEGORIES,
+  CategoryFilterKey,
+  SubFilterKey,
+  sortTeamMembersByPriority,
+  filterTeamMembers,
+  getTeamCategoryBadge,
+  isExternalTrack,
+} from '../utils/teamUtils';
 
 export const TeamSection: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
@@ -30,7 +30,8 @@ export const TeamSection: React.FC = () => {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
 
   // Filtering & search
-  const [activeCategory, setActiveCategory] = useState<'ALL' | TeamCategory>('ALL');
+  const [activeCategory, setActiveCategory] = useState<CategoryFilterKey>('ALL');
+  const [subFilter, setSubFilter] = useState<SubFilterKey>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Fetch team from backend API
@@ -55,43 +56,59 @@ export const TeamSection: React.FC = () => {
     fetchTeam();
   }, []);
 
-  // Filtered list
+  // When changing category, reset sub-filter to ALL
+  const handleCategoryChange = (key: CategoryFilterKey) => {
+    setActiveCategory(key);
+    setSubFilter('ALL');
+  };
+
+  // Filtered and priority-sorted list
   const filteredTeam = useMemo(() => {
-    return team.filter((member) => {
-      // Obey isPublic
-      if (member.isPublic === false) {
-        return false;
-      }
-
-      // Category filter
-      if (activeCategory !== 'ALL' && member.category !== activeCategory) {
-        return false;
-      }
-
-      // Search filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesName = member.name.toLowerCase().includes(q);
-        const matchesRole = member.role.toLowerCase().includes(q);
-        const matchesBio = member.bio.toLowerCase().includes(q);
-        const matchesFocus = member.focus.some((f) => f.toLowerCase().includes(q));
-        const matchesSkills = member.skills?.some((s) => s.toLowerCase().includes(q));
-        return matchesName || matchesRole || matchesBio || matchesFocus || matchesSkills;
-      }
-
-      return true;
-    });
-  }, [team, activeCategory, searchQuery]);
+    const filtered = filterTeamMembers(team, activeCategory, subFilter, searchQuery);
+    return sortTeamMembersByPriority(filtered);
+  }, [team, activeCategory, subFilter, searchQuery]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: team.filter((m) => m.isPublic !== false).length };
-    team.forEach((m) => {
-      if (m.isPublic !== false && m.category) {
-        counts[m.category] = (counts[m.category] || 0) + 1;
-      }
+    const counts: Record<string, number> = {
+      ALL: team.filter((m) => m.isPublic !== false).length,
+    };
+
+    TEAM_PRIORITY_CATEGORIES.forEach(({ key }) => {
+      if (key === 'ALL') return;
+      counts[key] = team.filter((m) => {
+        if (m.isPublic === false) return false;
+        if (key === 'Professor') return m.category === 'Professor' || m.category === 'Faculty';
+        if (key === 'Post Doc') return m.category === 'Post Doc' || m.category === 'Researchers';
+        if (key === 'PhD') return m.category === 'PhD' || m.category === 'PhD Scholars';
+        if (key === 'M.tech') return m.category === 'M.tech' || m.category === 'Students';
+        if (key === 'Interns') return m.category === 'Interns' || m.category === 'Inters';
+        if (key === 'Project Staff') return m.category === 'Project Staff';
+        if (key === 'Alumni') return m.category === 'Alumni';
+        return m.category === key;
+      }).length;
     });
+
     return counts;
+  }, [team]);
+
+  // Sub-counts for PhD and M.tech
+  const subCounts = useMemo(() => {
+    const phdMembers = team.filter(
+      (m) => m.isPublic !== false && (m.category === 'PhD' || m.category === 'PhD Scholars')
+    );
+    const mtechMembers = team.filter(
+      (m) => m.isPublic !== false && (m.category === 'M.tech' || m.category === 'Students')
+    );
+
+    return {
+      phdAll: phdMembers.length,
+      phdRegular: phdMembers.filter((m) => !isExternalTrack(m)).length,
+      phdExternal: phdMembers.filter((m) => isExternalTrack(m)).length,
+      mtechAll: mtechMembers.length,
+      mtechRegular: mtechMembers.filter((m) => !isExternalTrack(m)).length,
+      mtechExternal: mtechMembers.filter((m) => isExternalTrack(m)).length,
+    };
   }, [team]);
 
   return (
@@ -108,10 +125,10 @@ export const TeamSection: React.FC = () => {
               <span>Interdisciplinary Laboratory Personnel</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Faculty, Fellows & Researchers
+              Laboratory Research Team
             </h2>
             <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
-              Biomedical engineers, clinician-scientists, machine learning researchers, and doctoral investigators collaborating on next-generation clinical intelligence.
+              Professors, postdoctoral researchers, regular & external PhD scholars, M.Tech fellows, research interns, and project engineers collaborating on bedside clinical telemetry.
             </p>
           </div>
 
@@ -124,18 +141,18 @@ export const TeamSection: React.FC = () => {
           </Link>
         </div>
 
-        {/* Category Navigation Pills & Search Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800">
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-            {ALL_CATEGORIES.map(({ key, label }) => {
+        {/* Category Navigation Pills & Search Bar (In Strict Priority Order) */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+          {/* Category Tabs: Professor, Post Doc, PhD, M.Tech, Interns, Project Staff */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
+            {TEAM_PRIORITY_CATEGORIES.map(({ key, label }) => {
               const count = categoryCounts[key] || 0;
               const isActive = activeCategory === key;
               return (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setActiveCategory(key)}
+                  onClick={() => handleCategoryChange(key)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                     isActive
                       ? 'bg-maroon-800 text-white shadow-sm'
@@ -170,13 +187,103 @@ export const TeamSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Loading State Skeleton */}
-        {isLoading && team.length === 0 ? (
+        {/* Sub-Option Selector for PhD Track (Regular PhD vs External PhD) */}
+        {activeCategory === 'PhD' && (
+          <div className="flex items-center gap-2 mb-6 p-2 rounded-xl bg-slate-50 dark:bg-[#18090d] border border-slate-200/80 dark:border-slate-800 animate-in fade-in duration-200">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 pl-2 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-maroon-700" />
+              <span>PhD Scholar Sub-Option:</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSubFilter('ALL')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'ALL'
+                    ? 'bg-maroon-800 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                All PhD ({subCounts.phdAll})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilter('Regular')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'Regular'
+                    ? 'bg-sky-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-sky-800 dark:text-sky-300 hover:bg-sky-50 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                Regular PhD ({subCounts.phdRegular})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilter('External')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'External'
+                    ? 'bg-purple-800 text-white shadow-xs ring-1 ring-purple-500'
+                    : 'bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800/80'
+                }`}
+              >
+                External PhD ({subCounts.phdExternal})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Sub-Option Selector for M.Tech Track (Regular M.Tech vs External M.Tech) */}
+        {activeCategory === 'M.tech' && (
+          <div className="flex items-center gap-2 mb-6 p-2 rounded-xl bg-slate-50 dark:bg-[#18090d] border border-slate-200/80 dark:border-slate-800 animate-in fade-in duration-200">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 pl-2 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-maroon-700" />
+              <span>M.Tech Sub-Option:</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSubFilter('ALL')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'ALL'
+                    ? 'bg-maroon-800 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                All M.Tech ({subCounts.mtechAll})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilter('Regular')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'Regular'
+                    ? 'bg-teal-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 hover:bg-teal-50 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                Regular M.Tech ({subCounts.mtechRegular})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilter('External')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  subFilter === 'External'
+                    ? 'bg-indigo-800 text-white shadow-xs ring-1 ring-indigo-500'
+                    : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800/80'
+                }`}
+              >
+                External M.Tech ({subCounts.mtechExternal})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Member Grid / Loading / Empty states */}
+        {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((n) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <div
-                key={n}
-                className="h-80 rounded-2xl bg-slate-100 dark:bg-slate-850/60 animate-pulse border border-slate-200 dark:border-slate-800"
+                key={i}
+                className="h-80 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse border border-slate-200/60 dark:border-slate-800"
               />
             ))}
           </div>
@@ -191,6 +298,7 @@ export const TeamSection: React.FC = () => {
               type="button"
               onClick={() => {
                 setActiveCategory('ALL');
+                setSubFilter('ALL');
                 setSearchQuery('');
               }}
               className="mt-4 px-4 py-1.5 text-xs font-semibold rounded-lg bg-maroon-50 text-maroon-800 dark:bg-maroon-950/80 dark:text-maroon-300 hover:bg-maroon-100 transition-colors"
@@ -201,6 +309,8 @@ export const TeamSection: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredTeam.map((member) => {
+              const badge = getTeamCategoryBadge(member);
+
               return (
                 <motion.div
                   key={member.id}
@@ -212,10 +322,12 @@ export const TeamSection: React.FC = () => {
                   className="group relative bg-white dark:bg-[#18090d] rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-maroon-300 dark:hover:border-maroon-800/80 p-4 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between cursor-pointer"
                 >
                   <div>
-                    {/* Header Row: Category Badge */}
+                    {/* Header Row: Category Badge (with Regular/External indicators) */}
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-maroon-50 dark:bg-maroon-950/80 text-maroon-800 dark:text-maroon-300 border border-maroon-200/70 dark:border-maroon-800/60">
-                        {member.category || 'Researcher'}
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${badge.colorClass}`}
+                      >
+                        {badge.label}
                       </span>
                     </div>
 
@@ -262,29 +374,19 @@ export const TeamSection: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Focus Tags & View Profile Link */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {member.focus.slice(0, 2).map((tag) => (
+                  {/* Skills/Tags Preview */}
+                  {member.focus && member.focus.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-1">
+                      {member.focus.slice(0, 3).map((f) => (
                         <span
-                          key={tag}
-                          className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-800 font-medium"
+                          key={f}
+                          className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium"
                         >
-                          {tag}
+                          {f}
                         </span>
                       ))}
-                      {member.focus.length > 2 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md text-slate-400 font-mono">
-                          +{member.focus.length - 2}
-                        </span>
-                      )}
                     </div>
-
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 group-hover:text-maroon-800 dark:group-hover:text-maroon-400 font-semibold transition-colors">
-                      <span>View Bio & Papers</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               );
             })}
@@ -292,7 +394,7 @@ export const TeamSection: React.FC = () => {
         )}
       </div>
 
-      {/* Detailed Member Profile Side Panel Modal */}
+      {/* Modal Profile View */}
       <TeamMemberDetailModal
         member={selectedMember}
         onClose={() => setSelectedMember(null)}
@@ -300,3 +402,5 @@ export const TeamSection: React.FC = () => {
     </section>
   );
 };
+
+export default TeamSection;

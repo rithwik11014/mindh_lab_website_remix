@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { TeamMember } from '../types';
+import { getTeamCategoryBadge } from '../utils/teamUtils';
 
 interface TeamMemberDetailModalProps {
   member: TeamMember | null;
@@ -131,6 +132,15 @@ export const TeamMemberDetailModal: React.FC<TeamMemberDetailModalProps> = ({
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
                   {member.name}
                 </h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                      getTeamCategoryBadge(member).colorClass
+                    }`}
+                  >
+                    {getTeamCategoryBadge(member).label}
+                  </span>
+                </div>
                 <p className="text-base sm:text-lg font-semibold text-maroon-800 dark:text-maroon-400 mt-1">
                   {member.role}
                 </p>

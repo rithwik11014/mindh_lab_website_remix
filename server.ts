@@ -327,7 +327,8 @@ interface TeamMemberServer {
   id: string;
   name: string;
   role: string;
-  category: 'Faculty' | 'Researchers' | 'PhD Scholars' | 'Students' | 'Alumni' | 'Collaborators';
+  category: string;
+  subType?: string;
   credentials: string;
   bio: string;
   detailedBio?: string;
@@ -664,7 +665,8 @@ app.post("/api/team", requireAdminAuth, (req, res) => {
     const {
       name,
       role,
-      category = "Researchers",
+      category = "Professor",
+      subType,
       credentials = "",
       bio = "",
       detailedBio = "",
@@ -707,7 +709,8 @@ app.post("/api/team", requireAdminAuth, (req, res) => {
       id: `member-${Date.now()}`,
       name: name.trim(),
       role: role.trim(),
-      category: (category as any) || "Researchers",
+      category: (category as any) || "Professor",
+      subType: subType ? String(subType).trim() : undefined,
       credentials: credentials.trim(),
       bio: bio.trim(),
       detailedBio: detailedBio.trim(),
@@ -770,6 +773,7 @@ app.put("/api/team/:id", requireAdminAuth, (req, res) => {
       name: updateData.name !== undefined ? updateData.name.trim() : current.name,
       role: updateData.role !== undefined ? updateData.role.trim() : current.role,
       category: updateData.category || current.category,
+      subType: updateData.subType !== undefined ? updateData.subType : current.subType,
       credentials: updateData.credentials !== undefined ? updateData.credentials.trim() : current.credentials,
       bio: updateData.bio !== undefined ? updateData.bio.trim() : current.bio,
       detailedBio: updateData.detailedBio !== undefined ? updateData.detailedBio.trim() : current.detailedBio,

@@ -23,12 +23,13 @@ interface TeamAdminModalProps {
 }
 
 const CATEGORIES: TeamCategory[] = [
-  'Faculty',
-  'Researchers',
-  'PhD Scholars',
-  'Students',
+  'Professor',
+  'Post Doc',
+  'PhD',
+  'M.tech',
+  'Interns',
+  'Project Staff',
   'Alumni',
-  'Collaborators',
 ];
 
 const PHOTO_PRESETS = [
@@ -55,7 +56,8 @@ export const TeamAdminModal: React.FC<TeamAdminModalProps> = ({
   // Form states
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [category, setCategory] = useState<TeamCategory>('Researchers');
+  const [category, setCategory] = useState<TeamCategory>('Post Doc');
+  const [subType, setSubType] = useState<'Regular' | 'External'>('Regular');
   const [credentials, setCredentials] = useState('');
   const [bio, setBio] = useState('');
   const [detailedBio, setDetailedBio] = useState('');
@@ -92,7 +94,8 @@ export const TeamAdminModal: React.FC<TeamAdminModalProps> = ({
     if (initialMember) {
       setName(initialMember.name || '');
       setRole(initialMember.role || '');
-      setCategory(initialMember.category || 'Researchers');
+      setCategory(initialMember.category || 'Post Doc');
+      setSubType((initialMember.subType === 'External' ? 'External' : 'Regular') as 'Regular' | 'External');
       setCredentials(initialMember.credentials || '');
       setBio(initialMember.bio || '');
       setDetailedBio(initialMember.detailedBio || '');
@@ -255,6 +258,7 @@ export const TeamAdminModal: React.FC<TeamAdminModalProps> = ({
         name: name.trim(),
         role: role.trim(),
         category,
+        subType,
         credentials: credentials.trim(),
         bio: bio.trim(),
         detailedBio: detailedBio.trim(),
@@ -458,6 +462,38 @@ export const TeamAdminModal: React.FC<TeamAdminModalProps> = ({
                   />
                 </div>
               </div>
+
+              {(category === 'PhD' || category === 'M.tech') && (
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+                    {category === 'PhD' ? 'PhD Track Sub-Option' : 'M.Tech Track Sub-Option'}
+                  </label>
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalSubType"
+                        value="Regular"
+                        checked={subType !== 'External'}
+                        onChange={() => setSubType('Regular')}
+                        className="text-maroon-700 focus:ring-maroon-600"
+                      />
+                      <span>Regular ({category === 'PhD' ? 'Regular PhD' : 'Regular M.Tech'})</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalSubType"
+                        value="External"
+                        checked={subType === 'External'}
+                        onChange={() => setSubType('External')}
+                        className="text-purple-700 focus:ring-purple-600"
+                      />
+                      <span>External ({category === 'PhD' ? 'External PhD' : 'External M.Tech'})</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Profile Photo Management */}
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 space-y-3">
